@@ -1,0 +1,27 @@
+notes:
+
+Installation:
+
+
+Download these:
+	
+	Rar file with data, examples etc: 
+	https://drive.google.com/file/d/1bMnlc2vHlXWbiPxtTs4u-Kw-wdM-4L--/view?usp=sharing
+	
+	Get the CUDA environment, I got 10.1:
+	https://developer.nvidia.com/cuda-toolkit-archive (DLL from version 10.0 is needed for TensorFlow but newer 
+	                                                   versions work is that DLL is in place, see 
+													   https://www.joe0.com/2019/10/19/how-resolve-tensorflow-2-0-error-could-not-load-dynamic-library-cudart64_100-dll-dlerror-cudart64_100-dll-not-found/)
+	
+	Get cuDNN from nvidia developer, the version for CUDA 10.1 and v7
+	https://developer.nvidia.com/rdp/cudnn-archive (get the older v7: https://developer.nvidia.com/compute/machine-learning/cudnn/secure/7.6.5.32/Production/10.1_20191031/cudnn-10.1-windows10-x64-v7.6.5.32.zip)
+
+Unzip the .rar into the main directory
+
+Install the CUDA installer package
+
+Unzip cuDNN into the CUDA install directory
+
+Using Anaconda Command Prompt for Python: 
+	pip install -r requirements.txt	
+	
