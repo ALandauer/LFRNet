@@ -6,13 +6,13 @@ from utils import *
 import PIL.Image as pilImg
 
 class Dataset:
-    def __init__(self, train_hr3d_path, train_lf2d_path, 
-                n_slices, n_num, 
-                lf2d_base_size=None, 
-                normalize_mode='max', 
+    def __init__(self, train_hr3d_path, train_lf2d_path,
+                n_slices, n_num,
+                lf2d_base_size=None,
+                normalize_mode='max',
                 test_split=0.2,
-                shuffle=True, 
-                bianry_mask=False, 
+                shuffle=True,
+                bianry_mask=False,
                 multi_scale=False):
         '''
         Params:
@@ -35,54 +35,54 @@ class Dataset:
         self.shuffle          = shuffle
         self.make_binary_mask = bianry_mask
         self.multi_scale      = multi_scale
-        
+
         self.normalize_fn = normalize_percentile if normalize_mode is 'percentile' else normalize
 
     def _load_dataset(self, shuffle=True, make_binary_mask=False):
         def _shuffle_in_unison(arr1, arr2):
-            """shuffle elements in arr1 and arr2 in unison along the leading dimension 
+            """shuffle elements in arr1 and arr2 in unison along the leading dimension
             Params:
                 -arr1, arr2: np.ndarray
                     must be in the same size in the leading dimension
             """
             assert (len(arr1) == len(arr2))
-            new_idx = np.random.permutation(len(arr1)) 
+            new_idx = np.random.permutation(len(arr1))
             return arr1[new_idx], arr2[new_idx]
 
         def _load_imgs(path, fn, regx='.*.tif', printable=False, **kwargs):
             im_list = sorted(tl.files.load_file_list(path=path, regx=regx, printable=printable))
-            
+
             sample = fn(im_list[0], path, **kwargs)
             ims = np.zeros(shape=[len(im_list)] + list(sample.shape), dtype=np.float32)
-            
+
             for i, im_file in enumerate(im_list):
-                im = fn(im_file, path, **kwargs) 
+                im = fn(im_file, path, **kwargs)
                 if (im.dtype != np.float32):
                     im = im.astype(np.float32, casting='unsafe')
-                print('\r%d %s : %s' % (i, im_file, str(im.shape)), end='')  
+                print('\r%d %s : %s' % (i, im_file, str(im.shape)), end='')
 
                 ims[i] = im
             print()
             return ims
 
-        training_hr3d = _load_imgs(self.train_hr3d_path, fn=volread_HWD_norm, normalize_fn=self.normalize_fn)
+        training_hr3d = _load_imgs(self.train_hr3d_path, fn=get_and_rearrange3d, normalize_fn=self.normalize_fn)
         training_lf2d = _load_imgs(self.train_lf2d_path, fn=get_lf_extra, n_num=self.n_num, normalize_fn=self.normalize_fn)
         # training_lf2d = _load_imgs(self.train_lf2d_path, fn=imread_norm, normalize_fn=self.normalize_fn)
 
-        
+
         if (len(training_hr3d) == 0) or (len(training_lf2d) == 0) :
             raise Exception("none of the images have been loaded, please check the file directory in config")
-            
+
         assert len(training_hr3d) == len(training_lf2d)
 
         if make_binary_mask:
-            hr3d_mask = _load_imgs(self.train_hr3d_path, fn=volread_HWD, make_mask=make_binary_mask)
+            hr3d_mask = _load_imgs(self.train_hr3d_path, fn=get_and_rearrange3d, make_mask=make_binary_mask)
             self.training_hr3d_mask = hr3d_mask
 
         # [self.training_hr3d, self.training_lf2d] = _shuffle_in_unison(training_hr3d, training_lf2d) if shuffle else [training_hr3d, training_lf2d]
         [self.training_hr3d, self.training_lf2d] = training_hr3d, training_lf2d
         self.data_pair_num = len(self.training_hr3d)
-        
+
 
     def _generate_hr_pyramid(self):
         def _resize_xy(img3d, size):
@@ -93,7 +93,7 @@ class Dataset:
             h, w, depth = img3d.shape
             new_size = size + [depth]
             img_re = np.zeros(new_size)
-            
+
             for d in range(0, depth):
                 img_re[:,:,d] = np.array(pilImg.fromarray(img3d[:,:,d]).resize((size[1], size[0]), resample=pilImg.BICUBIC))
             return img_re
@@ -137,7 +137,7 @@ class Dataset:
             self._load_dataset(shuffle=self.shuffle, make_binary_mask=self.make_binary_mask)
         else:
             raise Exception('image data path doesn\'t exist:\n%s\n%s' %(self.train_lf2d_path, self.train_hr3d_path))
-        
+
 
         self.test_pair_num = int(self.data_pair_num * self.test_split)
         self.training_pair_num = self.data_pair_num - self.test_pair_num
@@ -149,7 +149,7 @@ class Dataset:
             self._generate_hr_pyramid()
 
         self.index = self._get_data_index(self.training_pair_num, shuffle=self.shuffle)
-        
+
         self.batch_size = batch_size
 
         print('HR dataset : %d\nLF dataset: %d\n' % (len(self.training_hr3d), len(self.training_lf2d)))
@@ -170,7 +170,7 @@ class Dataset:
                 yield (hr_batch, mask_batch), lf_batch, idx
             else:
                 yield (hr_batch, ), lf_batch, idx
-    
+
     def data(self):
         '''
         return the next batch of the training data
@@ -193,7 +193,7 @@ class Dataset:
     """
     def hasNext(self):
         return True if self.epoch < self.n_epochs else False
-             
+
     def iter(self):
         '''
         return the next batch of the training data
@@ -216,7 +216,7 @@ class Dataset:
                 return np.asarray(hr_batch), np.asarray(mask_batch), np.asarray(lf_batch), idx - nt, self.epoch
             else:
                 return np.asarray(hr_batch), np.asarray(lf_batch), idx - nt, self.epoch
-                
+
         raise Exception('epoch index out of bounds:%d/%d' %(self.epoch, self.n_epochs))
     """
 
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     test_dir = 'data/train/bead/aniso-f2_[m30-0]_step1um_N11/test'
     dataset = Dataset(train_hr3d_path=os.path.join(test_dir, 'WF'),
                         train_lf2d_path=os.path.join(test_dir, 'LF'),
-                        n_slices=31, 
+                        n_slices=31,
                         n_num=11,
                         lf2d_base_size=16,
                         test_split=0.)
@@ -238,4 +238,4 @@ if __name__ == "__main__":
     for epoch in range(3):
         for hr, lf, idx in dataset.data():
             # print('\repoch%d idx%d' % (epoch, idx), end='')
-            write3d(lf, os.path.join(save_dir, 'lf_epoch%04d_idx%04d.tif' % (epoch, idx)), bitdepth=8) 
+            write3d(lf, os.path.join(save_dir, 'lf_epoch%04d_idx%04d.tif' % (epoch, idx)), bitdepth=8)

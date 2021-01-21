@@ -12,6 +12,7 @@ __all__ = [
     'get_img2d_fn',
     'get_lf_extra',
     'lf_extract_fn',
+    # 'lfread_norm'
     'write3d',
     'normalize_percentile',
     'normalize',
@@ -45,27 +46,27 @@ def get_img3d_fn(filename, path, normalize_fn):
     """
     image = imageio.volread(path + filename) # [depth, height, width]
     # image = image[..., np.newaxis] # [depth, height, width, channels]
-            
+
     return normalize_fn(image)
-    
+
 def rearrange3d_fn(image):
     """ re-arrange image of shape[depth, height, width] into shape[height, width, depth]
     """
-    
+
     image = np.squeeze(image) # remove channels dimension
     #print('reshape : ' + str(image.shape))
     depth, height, width = image.shape
-    image_re = np.zeros([height, width, depth]) 
+    image_re = np.zeros([height, width, depth])
     for d in range(depth):
         image_re[:,:,d] = image[d,:,:]
-    return image_re    
+    return image_re
 
 def get_and_rearrange3d(filename, path, normalize_fn):
     image = get_img3d_fn(filename, path, normalize_fn=normalize_fn)
     return rearrange3d_fn(image)
-    
+
 def get_img2d_fn(filename, path, normalize_fn, **kwargs):
-  
+
     image = imageio.imread(path + filename).astype(np.float)
     if image.ndim == 2:
         image = image[:,:, np.newaxis]
@@ -77,9 +78,13 @@ def get_lf_extra(filename, path, n_num, normalize_fn, padding=False, **kwargs):
     extra = lf_extract_fn(image, n_num=n_num, padding=padding)
     return extra
 
+# def lfread_norm(filename, path, n_num, normalize_fn, padding=False, **kwargs):
+#     image = get_img2d_fn(filename, path, normalize_fn, **kwargs)
+#     extra = lf_extract_fn(image, n_num=n_num, padding=padding)
+#     return extra
 
 
-def normalize(x):  
+def normalize(x):
     max_ = np.max(x) * 1.1
     #max_ = 255.
     x = x / (max_ / 2.)
@@ -101,13 +106,13 @@ def resize_fn(x, size):
         -size: [height, width]
     '''
     x = np.array(pilimg.fromarray(x).resize(size=(size[1], size[0]), resample=pilimg.BICUBIC))
-    
+
     return x
-    
-def lf_extract_fn(lf2d, n_num=11, mode='toChannel', padding=False):
+
+def lf_extract_fn(lf2d, n_num, mode='toChannel', padding=False):
     """
     Extract different views from a single LF projection
-    
+
     Params:
         -lf2d: numpy.array, 2-D light field projection in shape of [height, width, channels=1]
         -mode - 'toDepth' -- extract views to depth dimension (output format [depth=multi-slices, h, w, c=1])
@@ -115,7 +120,7 @@ def lf_extract_fn(lf2d, n_num=11, mode='toChannel', padding=False):
         -padding -   True : keep extracted views the same size as lf2d by padding zeros between valid pixels
                      False : shrink size of extracted views to (lf2d.shape / Nnum);
     Returns:
-        ndarray [height, width, channels=n_num^2] if mode is 'toChannel' 
+        ndarray [height, width, channels=n_num^2] if mode is 'toChannel'
                 or [depth=n_num^2, height, width, channels=1] if mode is 'toDepth'
     """
     n = n_num
@@ -123,7 +128,7 @@ def lf_extract_fn(lf2d, n_num=11, mode='toChannel', padding=False):
     if padding:
         if mode == 'toDepth':
             lf_extra = np.zeros([n*n, h, w, c]) # [depth, h, w, c]
-            
+
             d = 0
             for i in range(n):
                 for j in range(n):
@@ -132,7 +137,7 @@ def lf_extract_fn(lf2d, n_num=11, mode='toChannel', padding=False):
         elif mode == 'toChannel':
             lf2d = np.squeeze(lf2d)
             lf_extra = np.zeros([h, w, n*n])
-            
+
             d = 0
             for i in range(n):
                 for j in range(n):
@@ -145,22 +150,22 @@ def lf_extract_fn(lf2d, n_num=11, mode='toChannel', padding=False):
         new_w = int(np.ceil(w / n))
 
         if mode == 'toChannel':
-            
+
             lf2d = np.squeeze(lf2d)
             lf_extra = np.zeros([new_h, new_w, n*n])
-            
+
             d = 0
             for i in range(n):
                 for j in range(n):
                     lf_extra[:, : , d] = lf2d[i : h : n, j : w : n]
                     d += 1
-                    
-            
-                        
-                        
+
+
+
+
         elif mode == 'toDepth':
             lf_extra = np.zeros([n*n, new_h, new_w, c]) # [depth, h, w, c]
-            
+
             d = 0
             for i in range(n):
                 for j in range(n):
@@ -168,10 +173,10 @@ def lf_extract_fn(lf2d, n_num=11, mode='toChannel', padding=False):
                     d += 1
         else:
             raise Exception('unknown mode : %s' % mode)
-            
+
     return lf_extra
-    
-    
+
+
 def do_nothing(x):
     return x
 
@@ -200,44 +205,44 @@ def _write3d(x, path, bitdepth=8):
 
         if bitdepth == 8:
             x = x * 255
-            x = x.astype(np.uint8)  
+            x = x.astype(np.uint8)
         else:
             x = x * 65535
-            x = x.astype(np.uint16) 
-    
+            x = x.astype(np.uint16)
+
     imageio.volwrite(path, x[..., 0])
-        
+
 def write3d(x, path, bitdepth=32):
     """
     x : [batch, depth, height, width, channels] or [batch, height, width, channels>3]
     """
-    
+
     #print(x.shape)
     dims = len(x.shape)
-    
+
     if dims == 4:
         batch, height, width, n_channels = x.shape
         x_re = np.zeros([batch, n_channels, height, width, 1])
         for d in range(n_channels):
             slice = x[:,:,:,d]
             x_re[:,d,:,:,:] = slice[:,:,:,np.newaxis]
-            
+
     elif dims == 5:
         x_re = x
     else:
         raise Exception('unsupported dims : %s' % str(x.shape))
-    
+
     batch = x_re.shape[0]
     if batch == 1:
-        _write3d(x_re[0], path, bitdepth) 
-    else:  
+        _write3d(x_re[0], path, bitdepth)
+    else:
         fragments = path.split('.')
         new_path = ''
         for i in range(len(fragments) - 1):
             new_path = new_path + fragments[i]
         for index, image in enumerate(x_re):
             #print(image.shape)
-            _write3d(image, new_path + '_' + str(index) + '.' + fragments[-1], bitdepth) 
+            _write3d(image, new_path + '_' + str(index) + '.' + fragments[-1], bitdepth)
 
 def load_psf(path, n_num=11, psf_size=155, n_slices=16):
     '''
@@ -247,17 +252,17 @@ def load_psf(path, n_num=11, psf_size=155, n_slices=16):
     file_list = sorted(tl.files.load_file_list(path=path, regx='.*.tif', printable=False))
     if len(file_list) != n_num ** 2:
         raise Exception('psf files number must be euqal to Nnum^2');
-        
+
     psf5d = np.zeros([n_num, n_num, n_slices, psf_size, psf_size])
     for i in range(n_num):
         for j in range(n_num):
             idx = i * n_num + j
             psf = imageio.volread(path + file_list[idx]) # [depth=n_slices, psf_size, psf_size]
             psf5d[i,j,...] = psf
-            
-    print('load psf5d in shape %s' % str(psf5d.shape))        
-    return psf5d[..., np.newaxis, np.newaxis]  
-    
+
+    print('load psf5d in shape %s' % str(psf5d.shape))
+    return psf5d[..., np.newaxis, np.newaxis]
+
 def generate_mask(n_num, img_size):
     '''
     Generate a mask that help to extract different view from a 3-D scene. Used in forward projection.
@@ -270,15 +275,15 @@ def generate_mask(n_num, img_size):
                 for w in range(0, img_size):
                     if h % n_num == i and w % n_num == j:
                         mask[h, w, i, j] = 1
-                        
+
     return mask
-    
+
 def retrieve_single_slice_from_file(file, path):
     x = get_img3d_fn(file, path)
     slice = 8
     tmp = x[slice, :, :, :] # height, width, channels
     return tmp
-     
+
 class PSFConfig:
     def __init__(self, size, n_num, n_slices):
         self.psf_size = size

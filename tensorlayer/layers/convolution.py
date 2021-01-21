@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from .. import _logging as logging
 from .core import *
 
@@ -24,8 +26,8 @@ __all__ = [
     'SeparableConv2d',
     'GroupConv2d',
 ]
-            
-            
+
+
 class Conv1dLayer(Layer):
     """
     The :class:`Conv1dLayer` class is a 1D CNN layer, see `tf.nn.convolution <https://www.tensorflow.org/api_docs/python/tf/nn/convolution>`__.
