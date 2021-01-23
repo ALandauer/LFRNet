@@ -10,7 +10,7 @@ class Dataset:
                 n_slices, n_num,
                 lf2d_base_size=None,
                 normalize_mode='max',
-                test_split=0.2,
+                test_split=0.1,
                 shuffle=True,
                 bianry_mask=False,
                 multi_scale=False):
@@ -59,14 +59,14 @@ class Dataset:
                 im = fn(im_file, path, **kwargs)
                 if (im.dtype != np.float32):
                     im = im.astype(np.float32, casting='unsafe')
-                print('\r%d %s : %s' % (i, im_file, str(im.shape)), end='')
+                print('\r%d %s : %s  normalized [%.3f, %.3f]' % (i, im_file, str(im.shape), np.min(im), np.max(im)), end='')
 
                 ims[i] = im
             print()
             return ims
 
-        training_hr3d = _load_imgs(self.train_hr3d_path, fn=get_and_rearrange3d, normalize_fn=self.normalize_fn)
-        training_lf2d = _load_imgs(self.train_lf2d_path, fn=get_lf_extra, n_num=self.n_num, normalize_fn=self.normalize_fn)
+        training_hr3d = _load_imgs(self.train_hr3d_path, fn=volread_HWD_norm, normalize_fn=self.normalize_fn)
+        training_lf2d = _load_imgs(self.train_lf2d_path, fn=lfread_norm, n_num=self.n_num, normalize_fn=self.normalize_fn)
         # training_lf2d = _load_imgs(self.train_lf2d_path, fn=imread_norm, normalize_fn=self.normalize_fn)
 
 
@@ -76,7 +76,7 @@ class Dataset:
         assert len(training_hr3d) == len(training_lf2d)
 
         if make_binary_mask:
-            hr3d_mask = _load_imgs(self.train_hr3d_path, fn=get_and_rearrange3d, make_mask=make_binary_mask)
+            hr3d_mask = _load_imgs(self.train_hr3d_path, fn=volread_HWD, make_mask=make_binary_mask)
             self.training_hr3d_mask = hr3d_mask
 
         # [self.training_hr3d, self.training_lf2d] = _shuffle_in_unison(training_hr3d, training_lf2d) if shuffle else [training_hr3d, training_lf2d]

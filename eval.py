@@ -9,7 +9,7 @@ import time
 from config import config
 
 from model import *
-from model.util.tf_pb import save_graph_as_pb
+# from model.util.tf_pb import save_graph_as_pb
 from utils import *
 
 
@@ -33,9 +33,7 @@ def read_valid_images(path):
 
     img_list = sorted(tl.files.load_file_list(path=path, regx='.*.tif', printable=False))
 
-    # img_set  = [__cast(lfread_norm(img_file, path, n_num=n_num, normalize_fn=normalize_fn)) for img_file in img_list]
-    img_set  = [__cast(get_lf_extra(img_file, path, n_num=n_num, normalize_fn=normalize_fn)) for img_file in img_list]
-
+    img_set  = [__cast(lfread_norm(img_file, path, n_num=n_num, normalize_fn=normalize_fn)) for img_file in img_list]
 
     len(img_set) != 0 or __raise("none of the images have been loaded")
 
@@ -137,8 +135,6 @@ if __name__ == '__main__':
     # parser.add_argument("-r", "--recursive", help="recursively eval all images under config.VALID.lf2d_path and its sub-folders",
     #                     action="store_true") #if the option is specified, assign True to args.recursive. Not specifying it implies False.
 
-    # parser.add_argument("--mip", help="save mean/max-intensity-projection instead of 3-D stack",
-    #                     action="store_true")
 
     parser.add_argument("--max", help="save max-intensity-projection instead of 3-D stack",
                         action="store_true")
